@@ -45,7 +45,8 @@
   super.onCreate(savedInstanceState);
   ```
   
-### 注：详细API接入手册可查看“Video SDK for Android-接口手册.md”文档
+### 备注：
+[详细API接入手册可查看“Video SDK for Android-接口手册.md”文档](https://github.com/youmesdk/YoumeVideoSDK_Android/blob/master/Video%20SDK%20for%20Android-%E6%8E%A5%E5%8F%A3%E6%89%8B%E5%86%8C.md)
 
 
 
