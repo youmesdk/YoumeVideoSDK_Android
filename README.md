@@ -45,7 +45,7 @@
   super.onCreate(savedInstanceState);
   ```
   
-
+### 注：详细API接入手册可查看“Video SDK for Android-接口手册.md”文档
 
 
 
