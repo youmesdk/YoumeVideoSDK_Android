@@ -2,7 +2,8 @@ package im.youme.talk.streaming.core;
 
 import android.util.Log;
 
-import com.youme.voiceengine.NativeEngine;
+import com.youme.voiceengine.YouMeConst;
+import com.youme.voiceengine.api;
 
 import java.util.ArrayList;
 
@@ -132,7 +133,8 @@ public class VideoProducer extends Thread {
                         yuvArray2_free.add(yuv2);
                         yuvArray1.remove(0);
                         yuvArray2.remove(0);
-                        NativeEngine.inputVideoFrame(yuvfull, yuvfull.length, mWidth, mHeight * 2, 1, mRotation, 0, System.currentTimeMillis());
+                        Log.i(TAG, "api.inputVideoFrame myThread. data len:"+ yuvfull.length+" fmt: " + YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_NV21 + " timestamp:" + System.currentTimeMillis());
+                        api.inputVideoFrame(yuvfull, yuvfull.length, mWidth, mHeight * 2, 1, mRotation, 0, System.currentTimeMillis());
 
                     } else {
                         try {

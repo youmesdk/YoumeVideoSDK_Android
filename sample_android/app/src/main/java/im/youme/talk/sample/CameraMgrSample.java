@@ -1,18 +1,29 @@
 package im.youme.talk.sample;
 
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import java.util.ArrayList;
+import java.util.concurrent.ArrayBlockingQueue;
+
 import android.annotation.SuppressLint;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
+import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaFormat;
 import android.opengl.GLES20;
 import android.opengl.GLES11Ext;
 import android.os.Build;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -24,6 +35,7 @@ import android.content.pm.PackageManager;
 import android.app.Activity;
 import android.Manifest;
 import android.view.Surface;
+import android.view.ViewDebug;
 
 import com.youme.mixers.GLESVideoMixer;
 import com.youme.mixers.VideoMixerHelper;
@@ -38,6 +50,8 @@ import im.youme.talk.streaming.core.VideoProducer;
 @SuppressWarnings("deprecation")
 public class CameraMgrSample {
     static String tag =  CameraMgrSample.class.getSimpleName();
+
+    private static final boolean DEBUG = true;
 
     private final static int DEFAULE_WIDTH = 640;
     private final static int DEFAULE_HEIGHT = 480;
@@ -65,10 +79,15 @@ public class CameraMgrSample {
 //    }
 
     private int mFps = 15;
+    private int mFrameInterval = 1000/mFps;
+    private int keyFrameInterval = 2 * mFps;
+    private int videoBitrate = 800 *1000;
+
     private int videoWidth = 640;
     private int videoHeight = 480;
     public int preViewWidth = 640;
     public int preViewHeight = 480;
+
     private boolean needLoseFrame = false;
     private long  lastFrameTime = 0;
     private int  frameCount = 0;
@@ -77,6 +96,14 @@ public class CameraMgrSample {
     private boolean mAutoFocusLocked = false;
     private boolean mIsSupportAutoFocus = false;
     private boolean mIsSupportAutoFocusContinuousPicture = false;
+
+    private ArrayList<EncodeThread> streamEncodeThreads = new ArrayList<EncodeThread>(2);
+    //camera 采集视频cache，用于encode处理
+    public static ArrayBlockingQueue<byte[]> YUVQueueMain = new ArrayBlockingQueue<byte[]>(15);
+    public static ArrayBlockingQueue<byte[]> YUVQueueMinor = new ArrayBlockingQueue<byte[]>(15);
+    private int mainStreamIndex = -1;
+    private int minorStreamIndex = -1;
+
     public CameraMgrSample(SurfaceView svCamera) {
         this.svCamera = svCamera;
         //this.svCamera.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -108,9 +135,18 @@ public class CameraMgrSample {
         }
     }
 
-    public void setPreViewFps(int fps)
-    {
+    public void setPreViewFps(int fps) {
         mFps = fps;
+        mFrameInterval = 1000/mFps;
+    }
+
+    public void setVideoSize(int width, int height) {
+        videoWidth = width;
+        videoHeight = height;
+    }
+
+    public void setVideoBitrate(int bitrate) {
+        videoBitrate = bitrate;
     }
 
     public int openCamera( boolean isFront) {
@@ -262,6 +298,10 @@ public class CameraMgrSample {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+
+        mainStreamIndex = startVideoStreamEncode(videoWidth, videoHeight, 0);
+//        minorStreamIndex = startVideoStreamEncode(videoWidth/2, videoHeight/2, 1);
+
         totalTime = 0;
         frameCount = 0;
         isFrontCamera = isFront;
@@ -283,14 +323,22 @@ public class CameraMgrSample {
         }
     }
 
-
-
     public int closeCamera() {
         if (camera != null) {
             camera.setPreviewCallback(null);
             camera.stopPreview();
             camera.release();
             camera = null;
+
+            if (minorStreamIndex >= 0) {
+                Log.d("bruce", "closeCamera: minorStreamIndex:" + minorStreamIndex);
+                stopStream(minorStreamIndex);
+            }
+
+            if (mainStreamIndex >= 0) {
+                Log.d("bruce", "closeCamera: mainStreamIndex:" + mainStreamIndex);
+                stopStream(mainStreamIndex);
+            }
         }
         return 0;
     }
@@ -318,9 +366,11 @@ public class CameraMgrSample {
             if (isDoubleStreamingModel) {
                 VideoProducer.getInstance().pushFrame(data, cameraId);
             } else {
-                //Log.i(tag, "onVideoFrameMixedCallback 1. data len:"+data.length+" fmt: " + YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_NV21 + " timestamp:" + System.currentTimeMillis());
-                api.inputVideoFrame(data, data.length, width, height, YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_NV21, rotation, mirror, System.currentTimeMillis());
-
+//                Log.i(tag, "inputVideoFrame youmePreviewCallback 1. data len:"+data.length+" fmt: " + YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_NV21 + " timestamp:" + System.currentTimeMillis());
+//                api.inputVideoFrame(data, data.length, width, height, YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_NV21, rotation, mirror, System.currentTimeMillis(), 0);
+                putYUVData(0, data);
+                byte[] tempData = NV21_minor_scale(data, preViewWidth, preViewHeight);
+                putYUVData(1, tempData);
             }
             if(camera != null) {
                 camera.addCallbackBuffer(data);
@@ -340,7 +390,8 @@ public class CameraMgrSample {
             else{
                 mirror = YouMeConst.YouMeVideoMirrorMode.YOUME_VIDEO_MIRROR_MODE_DISABLED;
             }
-            api.inputVideoFrameGLES(mTextureID, null, preViewWidth, preViewHeight, YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_TEXTURE_OES, 90, mirror, timestamp);
+//            Log.i(tag, "inputVideoFrame texture 1. " + "timestamp: "+ timestamp);
+//            api.inputVideoFrameGLES(mTextureID, null, preViewWidth, preViewHeight, YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_TEXTURE_OES, 90, mirror, timestamp);
 
         }
     };
@@ -548,5 +599,365 @@ public class CameraMgrSample {
         return retSize;
     }
 
+    public int startVideoStreamEncode(int width, int height, int streamId) {
+        EncodeThread streamEncodeThread = new EncodeThread(width, height, streamId);
+        streamEncodeThread.start();
+        streamEncodeThreads.add(streamEncodeThread);
+        Log.d("bruce", "startVideoStreamEncode: streamEncodeThread:" + streamEncodeThread);
+        Log.d("bruce", "startVideoStreamEncode: streamEncodeThreads.size():" + streamEncodeThreads.size());
+        return streamEncodeThreads.size() - 1;
+    }
 
+    public void stopStream(int streamIndex) {
+        if (streamIndex > streamEncodeThreads.size()-1) {
+            return;
+        }
+
+        EncodeThread encodeThread = streamEncodeThreads.get(streamIndex);
+        if (encodeThread != null) {
+            Log.d("bruce", "stopStream: encodeThread:" + encodeThread);
+            encodeThread.setEnable(false);
+            streamEncodeThreads.remove(streamIndex);
+        }
+    }
+
+    public MediaCodec createMediaCodec(int width, int height, int streamId) {
+        MediaCodec mediaCodec = null;
+
+        // 默认设置大流码率，针对小流，码率取其一半
+        int tempBitrate = videoBitrate;
+        if (1 == streamId) {
+            tempBitrate = videoBitrate/2;
+        }
+
+        MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height);
+        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, tempBitrate);
+        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mFps);
+        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1); //关键帧时间间隔，单位s
+
+        try {
+            mediaCodec = MediaCodec.createEncoderByType("video/avc");
+            mediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            mediaCodec.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return mediaCodec;
+    }
+
+    public void closeMediaCodec(MediaCodec mediaCodec) {
+        if (mediaCodec != null) {
+            mediaCodec.stop();
+            mediaCodec.release();
+        }
+    }
+
+    public FileOutputStream createOutputStream(int width, int height) {
+        FileOutputStream fileOutputStream = null;
+        try {
+            String fileName = "h264_" + String.valueOf(width) + "*" + String.valueOf(height);
+            File saveFile = new File("/sdcard/Download/", fileName);
+            fileOutputStream = new FileOutputStream(saveFile);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        return fileOutputStream;
+    }
+
+    public void writeDataToFile(FileOutputStream fileOutputStream, byte[] data) {
+        if (data == null || fileOutputStream == null) {
+            return;
+        }
+
+        try {
+            fileOutputStream.write(data);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void closeOutputStream(FileOutputStream fileOutputStream) {
+        if (fileOutputStream == null) {
+            return;
+        }
+
+        try {
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private int getYUVQueueSize(int streamId) {
+        if (0 == streamId) {
+            return YUVQueueMain.size();
+        } else {
+            return YUVQueueMinor.size();
+        }
+    }
+
+    private byte[] getYUVQueueElem(int streamId) {
+        if (0 == streamId) {
+            return YUVQueueMain.poll();
+        } else {
+            return YUVQueueMinor.poll();
+        }
+    }
+
+    public void putYUVData(int streamId, byte[] buffer) {
+        if (0 == streamId) {
+            if (YUVQueueMain.size() >= 10) {
+                YUVQueueMain.poll();
+            }
+            YUVQueueMain.add(buffer);
+        } else {
+            if (YUVQueueMinor.size() >= 10) {
+                YUVQueueMinor.poll();
+            }
+            YUVQueueMinor.add(buffer);
+        }
+
+    }
+
+    private long computePresentationTime(long frameIndex) {
+        return 132 + frameIndex * 1000000 / mFps;
+    }
+
+    // simple scale to minor stream
+    private byte[] NV21_minor_scale(byte[] input, int inputWidth, int inputHeight) {
+        if (null == input) {
+            return null;
+        }
+        int i = 0, j = 0;
+        int inputFrameYSize = inputWidth * inputHeight;
+
+        int outputWidth = inputWidth/2;
+        int outputHeight = inputHeight/2;
+        int outputFrameYSize = outputWidth * outputHeight;
+        int outputFrameSize = outputWidth * outputHeight * 3 / 2;
+
+        byte[] outputFrame = new byte[outputFrameSize];
+
+        // scale Y
+        for (i = 0; i < outputHeight; i++) {
+            for (j = 0; j < outputWidth; j++) {
+                outputFrame[i * outputWidth + j] = input[2 * i * outputWidth + 2*j];
+            }
+        }
+
+        //scale UV
+        for (i = 0; i < outputWidth; i++) {
+            for (j = 0; j < outputHeight/2; j+=2) {
+                outputFrame[outputFrameYSize + i * outputHeight/2 + j] = input[inputFrameYSize + i * outputHeight + 2*j];
+                outputFrame[outputFrameYSize + i * outputHeight/2 + j + 1] = input[inputFrameYSize + i * outputHeight + 2*j + 1];
+            }
+        }
+
+        return outputFrame;
+    }
+
+    private void NV21ToNV12(byte[] nv21,byte[] nv12,int width,int height){
+        if(nv21 == null || nv12 == null) {
+            return;
+        }
+
+        int framesize = width*height;
+        int i = 0,j = 0;
+        System.arraycopy(nv21, 0, nv12, 0, framesize);
+        for(i = 0; i < framesize; i++){
+            nv12[i] = nv21[i];
+        }
+
+        for (j = 0; j < framesize/2; j+=2)
+        {
+            nv12[framesize + j] = nv21[j+framesize + 1];
+            nv12[framesize + j + 1] = nv21[j+framesize];
+        }
+    }
+
+    private byte[] NV21_rotate_to_270(byte[] nv21_data, int width, int height)
+    {
+        int y_size = width * height;
+        int buffser_size = y_size * 3 / 2;
+        byte[] nv21_rotated = new byte[buffser_size];
+        int i = 0;
+
+        // Rotate the Y luma
+        for (int x = width - 1; x >= 0; x--)
+        {
+            int offset = 0;
+            for (int y = 0; y < height; y++)
+            {
+                nv21_rotated[i] = nv21_data[offset + x];
+                i++;
+                offset += width;
+            }
+        }
+
+        // Rotate the U and V color components
+        i = y_size;
+        for (int x = width - 1; x > 0; x = x - 2)
+        {
+            int offset = y_size;
+            for (int y = 0; y < height / 2; y++)
+            {
+                nv21_rotated[i] = nv21_data[offset + (x - 1)];
+                i++;
+                nv21_rotated[i] = nv21_data[offset + x];
+                i++;
+                offset += width;
+            }
+        }
+        return nv21_rotated;
+    }
+
+    class EncodeThread extends Thread {
+        private int width;
+        private int height;
+        private int streamId;
+
+        private byte[] inputRaw = null;
+        private byte[] inputRotate = null;
+        private byte[] inputYuv420sp = null;
+
+        private long pts = 0;
+        private long generateIndex = 0;
+        private int TIMEOUT_USEC = 0;
+
+        private ByteBuffer[] inputBuffers;
+        private ByteBuffer[] outputBuffers;
+        ByteBuffer inputBuffer;
+        ByteBuffer outputBuffer;
+        int inputBufferIndex;
+        int outputBufferIndex;
+        byte[] outData = null;
+        boolean isEnable = true;
+
+        MediaCodec.BufferInfo bufferInfo;
+
+        EncodeThread(int width, int height, int streamId) {
+            this.width = width;
+            this.height = height;
+            this.streamId = streamId;
+        }
+
+        public void setEnable(boolean enable) {
+            isEnable = enable;
+        }
+
+        @Override
+        public void run () {
+            MediaCodec mediaCodec = createMediaCodec(width, height, streamId);
+            // debug: dump文件测试
+            FileOutputStream fileOutputStream = createOutputStream(width, height);
+            // 暂时存储sps/pps帧数据
+            byte[] configbyte = null;
+
+            while(isEnable) {
+                if (getYUVQueueSize(streamId) > 0) {
+                    inputRaw = getYUVQueueElem(streamId);
+                    inputYuv420sp = new byte[width*height*3/2];
+
+                    inputRotate = NV21_rotate_to_270(inputRaw, height, width);
+                    NV21ToNV12(inputRotate, inputYuv420sp, width, height);
+
+                    inputRaw = null;
+                    inputRotate = null;
+                }
+
+                if (inputYuv420sp != null) {
+                    try {
+                        inputBuffers = mediaCodec.getInputBuffers();
+                        outputBuffers = mediaCodec.getOutputBuffers();
+                        inputBufferIndex = mediaCodec.dequeueInputBuffer(-1);
+                        if (inputBufferIndex >= 0) {
+                            pts = computePresentationTime(generateIndex);
+                            inputBuffer = inputBuffers[inputBufferIndex];
+                            inputBuffer.clear();
+                            inputBuffer.put(inputYuv420sp);
+                            mediaCodec.queueInputBuffer(inputBufferIndex, 0, inputYuv420sp.length, pts, 0);
+                            generateIndex += 1;
+                        }
+
+                        bufferInfo = new MediaCodec.BufferInfo();
+                        outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC);
+
+                        while (outputBufferIndex >= 0) {
+                            outputBuffer = outputBuffers[outputBufferIndex];
+                            outData = new byte[bufferInfo.size];
+                            outputBuffer.get(outData);
+
+                            // debug: dump文件测试
+                            if (DEBUG) {
+                                writeDataToFile(fileOutputStream, outData);
+                            }
+
+                            long timestamp = System.currentTimeMillis();
+                            if((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 2){
+                                Log.i(tag,  "Config frame generated. Offset: " + bufferInfo.offset +
+                                        ". Size: " + bufferInfo.size);
+                                int sps_position = 0;
+                                int pps_position = 0;
+                                for (int i = 0; i < bufferInfo.size; i++) {
+                                    if (outData[i] == 0 && outData[i+1] == 0 && outData[i+2] == 0 && outData[i+3] == 1) {
+                                        if ((outData[i+4] & 0x1F) == 0x7) {
+                                            sps_position = i+4;
+                                        } else if ((outData[i+4] & 0x1F) == 0x8) {
+                                            pps_position = i+4;
+                                        }
+                                    }
+                                }
+                                int sps_len = pps_position - sps_position - 4;
+                                int pps_len = bufferInfo.size - pps_position ;
+
+//                                startcode + stap-a nalutype + spslen + spsbody + ppslen + ppsbody
+//                                int configsize = 4 + 1 + 2 + sps_len + 2 + pps_len;
+                                if (configbyte != null) {
+                                    configbyte = null;
+                                }
+
+                                configbyte = outData;
+                                outData = null;
+
+                            }else if((bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) == 1){
+
+//                                Log.i(tag, "inputVideoFrame frame key 1. stream: "+ streamId +", sps: " + configbyte.length + ", timestamp: " + timestamp);
+//                                Log.i(tag, "inputVideoFrame frame key 2. stream: "+ streamId +", IDR: " + bufferInfo.size + ", timestamp: " + timestamp);
+
+                                // sps+pps
+                                api.inputVideoFrameEncrypt(configbyte, configbyte.length, width, height, YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_H264, 0, 0,  timestamp, streamId);
+                                // key frame
+                                api.inputVideoFrameEncrypt(outData, bufferInfo.size, width, height, YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_H264, 0, 0,  timestamp, streamId);
+                                Thread.sleep(mFrameInterval);
+                            } else {
+//                                Log.i(tag, "inputVideoFrame frame normal 3. stream: "+ streamId +",  P frame: " + bufferInfo.size + ", timestamp: " + timestamp);
+                                api.inputVideoFrameEncrypt(outData, bufferInfo.size, width, height, YouMeConst.YOUME_VIDEO_FMT.VIDEO_FMT_H264, 0, 0,  timestamp, streamId);
+                                Thread.sleep(mFrameInterval);
+                            }
+
+                            mediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+                            outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC);
+                        }
+
+                    } catch (Throwable t) {
+                        t.printStackTrace();
+                    }
+
+                    inputYuv420sp = null;
+                } else {
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            closeMediaCodec(mediaCodec);
+            closeOutputStream(fileOutputStream);
+        }
+    }
 }

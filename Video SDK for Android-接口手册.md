@@ -721,17 +721,19 @@ int setReverbEnabled (boolean enabled);
 ## 设置音频数据回调
 
 ```
-void setPcmCallbackEnable(YouMeCallBackInterfacePcm callback, int flag, boolean outputToSpeaker);
+void setPcmCallbackEnable(YouMeCallBackInterfacePcm callback, int flag, boolean outputToSpeaker, int nOutputSampleRate, int nOutputChannel);
 ```
 
 * **功能**
 设置是否开启音频pcm回调，以及开启哪种类型的pcm回调。
-本接口可以在加入房间前，或者加入房间后调用。
+本接口在加入房间前调用。
 
 * **参数说明**
 `callback`:实现音频pcm回调的示例
 `flag`:说明需要哪些类型的音频回调，共有三种类型的回调，分别是远端音频，录音音频，以及远端和录音数据的混合音频。flag格式形如`YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Romote| YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Record|YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Mix`；
 `bOutputToSpeaker`: 是否扬声器静音:true 不静音;false 静音
+`nOutputSampleRate`: 音频回调数据的采样率：8000,16000,32000,44100,48000; 具体参考 YOUME_SAMPLE_RATE类型定义
+`nOutputChannel`: 音频回调数据的通道数：1 单通道；2 立体声
 
 * **相关回调接口**
 
@@ -839,7 +841,7 @@ void onRequestRestAPI(int requestID, int iErrorCode, String strQuery, String str
 
 * **语法**
 ```
-void setToken( String strToken );
+void setToken( String strToken);
 ```
 
 * **功能**
@@ -847,6 +849,24 @@ void setToken( String strToken );
 
 * **参数说明**
 `strToken`：身份验证用token，设置为NULL或者空字符串，清空token值，不进行身份验证。
+
+##  安全验证码设置,setToken后续将弃用
+
+* **语法**
+```
+void setTokenV3( String strToken, long timeStamp );
+```
+
+* **功能**
+设置身份验证的token，需要配合后台接口。
+
+* **token计算方式**
+采用SHA1加密算法，token=sha1(apikey+appkey+roomid+userid+timestamp)。
+token由于涉及安全问题，正式使用在服务端进行计算
+
+* **参数说明**
+`strToken`：身份验证用token，设置为NULL或者空字符串，清空token值，不进行身份验证。
+`timeStamp`：用户加入房间的时间，单位s。
 
 ##  查询频道用户列表
 
@@ -1042,16 +1062,16 @@ int stopInviteMic();
 
 * **语法**
 ```
-int sendMessage( String  pChannelID, String pContent  );
+int sendMessage( String  pChannelID, String pContent );
 ```
 
 * **功能**
-在语音频道内，广播一个文本消息。
+在语音频道内广播消息。
 
 
 * **参数说明**
 `pChannelID`：频道ID（自己需要进入这个频道）。
-`pContent`：要广播的文本内容。
+`pContent`：消息内容-文本串。
 
 * **返回值**
 负数表示错误码，正数表示回调requestID，用于标识这次消息发送
@@ -1062,6 +1082,33 @@ int sendMessage( String  pChannelID, String pContent  );
 //event:YOUME_EVENT_MESSAGE_NOTIFY:频道内其他人收到消息的通知。param为文本内容
 void onEvent(int event, int iErrorCode, String roomid, Object param);
 ```
+
+## 点对点发送消息
+
+* **语法**
+```
+int sendMessageToUser( String  pChannelID, String pContent, String pUserID  );
+```
+
+* **功能**
+在语音频道内，向房间内用户发送消息。
+
+
+* **参数说明**
+`pChannelID`：频道ID（自己需要进入这个频道）。
+`pContent`：消息内容-文本串。
+`pUserID`：房间用户ID，如果为空，则表示向房间广播消息
+
+* **返回值**
+负数表示错误码，正数表示回调requestID，用于标识这次消息发送
+
+* **异步回调**
+```
+//event:YOUME_EVENT_SEND_MESSAGE_RESULT: 发送消息的结果回调，param为requestID的字符串
+//event:YOUME_EVENT_MESSAGE_NOTIFY:频道内其他人收到消息的通知。param为文本内容
+void onEvent(int event, int iErrorCode, String roomid, Object param);
+```
+
 
 ## 把人踢出房间
 
@@ -1140,6 +1187,16 @@ public static void SetCaptureFrontCameraEnable(boolean enable)
 
 
 ### 视频参数
+
+#### 设置预览视频镜像开关
+* **语法**
+
+```java
+public static native int setlocalVideoPreviewMirror(boolean enable);
+```
+
+* **参数说明**
+    `enable`: 预览是否开启镜像功能
 
 #### 设置视频帧率   
 
@@ -1248,6 +1305,22 @@ public static native int setVideoNetAdjustmode( int mode );
 * **参数说明**
     `mode`: 0: 自动调整；1: 上层设置大小流接收选择
     
+* **返回值**
+
+    错误码，YOUME_SUCCESS - 表示成功,其他 - 具体错误码 
+
+#### 设置视频接收平滑模式开关
+进房间前设置或进房间后动态设置
+
+* **语法**
+
+```java
+public static native int setVideoSmooth( int mode );
+```
+
+* **参数说明**
+    `mode`: 开关 0:关闭平滑，1:打开平滑
+
 * **返回值**
 
     错误码，YOUME_SUCCESS - 表示成功,其他 - 具体错误码 
@@ -1590,14 +1663,14 @@ public static int  setExternalInputSampleRate(  int inputSampleRate, int mixedCa
 设置外部输入模式的语音采样率
 
 * **参数说明**
-`inputSampleRate`:输入语音采样率
-`mixedCallbackSampleRate`:mix后输出语音采样率
+`inputSampleRate`:输入语音采样率, 具体参考 YOUME_SAMPLE_RATE类型定义
+`mixedCallbackSampleRate`:mix后输出语音采样率, 具体参考 YOUME_SAMPLE_RATE类型定义
 
 * **返回值**
 如果成功则返回YOUME_SUCCESS，其它具体参见[YouMeErrorCode类型定义](/doc/TalkAndroidStatusCode.php#YouMeErrorCode类型定义)。
 
 
-#### 输入音频数据
+#### 输入音频数据（支持单声道——待废弃）
 * **语法**
 
 ```java
@@ -1611,6 +1684,24 @@ public  static boolean inputAudioFrame(byte[] data, int len, long timestamp)
 
 * **返回值**	
 	成功/失败
+
+#### 输入音频数据（扩展）
+* **语法**
+
+```java
+public  static boolean inputAudioFrameEx(byte[] data, int len, long timestamp, int channelnum, boolean binterleaved)
+```
+
+* **参数说明**
+   `data`: 指向PCM数据的缓冲区
+	`len`: 音频数据的大小
+	`timestamp`: 时间戳，单位毫秒
+	`channelnum`: 声道数，1:单声道，2:双声道，其它非法
+	`binterleaved`: 音频数据打包格式（仅对双声道有效）
+
+* **返回值**	
+	成功/失败
+	
 	
 #### 输入视频数据
 视频数据输入(房间内其它用户会收到YOUME_EVENT_OTHERS_VIDEO_INPUT_START事件)
@@ -1635,6 +1726,30 @@ public  boolean inputVideoFrame(byte[] data, int len, int width, int height, int
 * **返回值**	
 	成功/失败
 	
+    #### 输入加密视频数据，支持大小流
+    视频数据输入(房间内其它用户会收到YOUME_EVENT_OTHERS_VIDEO_INPUT_START事件)
+
+
+    * **语法**
+
+    ```java
+    public  boolean inputVideoFrameEncrypt(byte[] data, int len, int width, int height, int fmt, int rotation, int mirror, long timestamp, int streamID)
+    ```
+
+    * **参数说明**
+      `data`: 视频帧数据
+      `len`: 视频数据大小
+      `width`: 视频图像宽
+      `height`: 视频图像高
+      `fmt`: 视频格式
+      `rotation`: 视频旋转角度
+      `mirror`: 是否镜像
+      `timestamp`: 时间戳，单位毫秒
+      `streamID`: 表示大小流ID
+
+    * **返回值**    
+        成功/失败
+        
 #### 输入视频数据2
 
 * **语法**
@@ -1911,7 +2026,7 @@ public void onRecvCustomData(byte[] data, long timestamp);
     `timestamp`: 时间戳，单位毫秒   
 
 
-#### 输入用户自定义数据
+#### 输入自定义数据
 
 * **语法**
 
@@ -1924,6 +2039,19 @@ public static int inputCustomData(byte[] data,int len,long timestamp)
     `len`: 数据长度，不能大于1024
     `timestamp`: 时间戳
 
+#### 点对点输入自定义数据
+
+* **语法**
+
+```java
+public static int inputCustomDataToUser(byte[] data,int len,long timestamp, String userId)
+```
+
+* **参数说明**
+    `data`: 自定义数据，要广播的自定义数据
+    `len`: 数据长度，不能大于1024
+    `timestamp`: 时间戳
+    `userId`: 接收端用户
 
 ### 其他操作
 #### 屏蔽他人视频
@@ -2136,3 +2264,100 @@ int unInit ();
 * **返回值**
 如果成功则返回YOUME_SUCCESS，其它具体参见[YouMeErrorCode类型定义](/doc/TalkAndroidStatusCode.php#YouMeErrorCode类型定义)。
 
+
+
+## 录屏模块接口(ScreenRecorder)
+该录屏接口要求系统Android 5.0及以上，在录屏开始时需要申请录屏权限，用户允许后开始录屏，由于系统隐私设置，录屏数据通过录屏数据接口交给SDK
+### 录屏初始化
+* **语法**
+```java
+public static void init(Context env)
+```
+
+* **参数说明**
+    `env`: activity上下文变量
+
+### 录屏分辨率设置
+* **语法**
+```java
+public static void setResolution(int width, int height)
+```
+
+### 录屏帧率设置
+* **语法**
+```java
+public static void setFps(int fps)
+```
+
+### 开始录屏
+* **语法**
+```java
+public static boolean startScreenRecorder() 
+```
+
+* **参数说明**
+
+* **返回值**    
+   true 成功，false 失败
+
+### 停止录屏
+* **语法**
+```java
+public static boolean stopScreenRecorder()
+```
+
+* **参数说明**
+
+* **返回值**    
+   true 成功，false 失败
+
+### 录屏数据接口
+* **语法**
+```java
+protected void onActivityResult(int requestCode, int resultCode, Intent data)
+```
+* **参考demo**
+``` 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == ScreenRecorder.SCREEN_RECODER_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                ScreenRecorder.onActivityResult(requestCode, resultCode, data);
+            }else {
+                isOpenShare = false;
+            }
+        }
+    }
+```
+
+## 局域网传输接口
+### 设置局域网信息
+* **语法**
+```java
+public static native int setLocalConnectionInfo(String pLocalIP, int iLocalPort, String pRemoteIP, int iRemotePort)
+```
+
+* **参数说明**
+
+    `pLocalIP`: 本端ip
+    `iLocalPort`: 本端数据端口
+    `pRemoteIP`: 远端ip
+    `iRemotePort`: 远端数据端口
+
+* **返回值**
+
+    错误码，0 - 表示成功,其他 - 具体错误码
+
+### 设置P2P连接异常时是否切换server转发
+* **语法**
+```java
+public static native int setRouteChangeFlag(boolean enable)
+```
+
+* **参数说明**
+    `enable`: 设置是否切换server通路标志
+
+* **返回值**
+
+    错误码，0 - 表示成功,其他 - 具体错误码

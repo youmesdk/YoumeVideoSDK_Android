@@ -110,6 +110,11 @@ YOUME_EVENT_OTHERS_ENCODER_ERROR            | 307| 编码错误
 YOUME_EVENT_OTHERS_DECODER_ERROR            | 308| 解码错误
 YOUME_EVENT_CAMERA_DEVICE_CONNECT           | 400| 摄像头设备插入，移动端无效
 YOUME_EVENT_CAMERA_DEVICE_DISCONNECT        | 401| 摄像头设备拔出，移动端无效
+YOUME_EVENT_VIDEO_ENCODE_PARAM_REPORT       | 500| 编码参数调整上报
+YOUME_EVENT_RTP_ROUTE_P2P                   | 600| P2P通路检测ok, 当前通路为P2P
+YOUME_EVENT_RTP_ROUTE_SEREVER               | 601| P2P通路检测失败, 当前通路为server转发
+YOUME_EVENT_RTP_ROUTE_CHANGE_TO_SERVER      | 602| 运行过程中P2P 检测失败，切换到server转发
+
 YOUME_EVENT_EOF                             |1000|
 
 ## YouMeErrorCode 类型定义
@@ -165,7 +170,7 @@ YOUME_ERROR_UNKNOWN                      |-1000|未知错误
 ----|------|-----
 YOUME_AVS_AUDIO_CODERATE                 | 1 |  音频传输码率，userid是自己:上行码率，userid其它人:下行码率，单位Bps, *8/1000 可以转换为kbps
 YOUME_AVS_VIDEO_CODERATE                 | 2 |  视频传输码率，userid是自己:上行码率，userid其它人:下行码率，单位Bps, *8/1000 可以转换为kbps
-YOUME_AVS_VIDEO_FRAMERATE                | 3 |  视频帧率，userid是自己:上行帧率，userid其它人:下行帧率
+YOUME_AVS_VIDEO_FRAMERATE                | 3 |  视频帧率，userid是自己:上行帧率(编码前)，userid其它人:下行帧率(解码后)
 YOUME_AVS_AUDIO_PACKET_UP_LOSS_RATE      | 4 |  音频上行丢包率,千分比
 YOUME_AVS_AUDIO_PACKET_DOWN_LOSS_RATE    | 5 |  音频下行丢包率,千分比
 YOUME_AVS_VIDEO_PACKET_UP_LOSS_RATE      | 6 |  视频上行丢包率,千分比
@@ -173,6 +178,9 @@ YOUME_AVS_VIDEO_PACKET_DOWN_LOSS_RATE    | 7 |  视频下行丢包率,千分比
 YOUME_AVS_AUDIO_DELAY_MS                 | 8 |  音频延迟，单位毫秒
 YOUME_AVS_VIDEO_DELAY_MS                 | 9 |  视频延迟，单位毫秒
 YOUME_AVS_VIDEO_BLOCK                    |10 |  视频卡顿,是否发生过卡顿
+YOUME_AVS_AUDIO_PACKET_UP_LOSS_HALF      |11 |  音频上行的服务器丢包率，千分比
+YOUME_AVS_VIDEO_PACKET_UP_LOSS_HALF      |12 |  视频上行的服务器丢包率，千分比
+YOUME_AVS_RECV_DATA_STAT                 |13 |  下行带宽,单位Bps
 
 
 ## YOUME_RTC_SERVER_REGION 类型定义

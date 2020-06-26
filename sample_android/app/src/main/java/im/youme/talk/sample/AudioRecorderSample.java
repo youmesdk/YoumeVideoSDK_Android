@@ -15,7 +15,7 @@ import android.media.MediaRecorder;
 
 import com.youme.voiceengine.AudioPlayer;
 import com.youme.voiceengine.NativeEngine;
-
+import com.youme.voiceengine.api;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -31,8 +31,8 @@ public class AudioRecorderSample
 {
     private static final String  TAG = "AudioRecorderSample";
     private static final int     DEFAULT_SAMPLE_RATE = 44100;
-    private static final int     DEFAULT_CHANNEL_NUM = 1;
-    private static final int     DEFAULT_BYTES_PER_SAMPLE = 2;
+    private static final int     DEFAULT_CHANNEL_NUM = 2;
+    private static final int     DEFAULT_BYTES_PER_SAMPLE = 2 * DEFAULT_CHANNEL_NUM;
     private static final boolean DEBUG = false;
     private static WebRtcAudioEffects effects = null;
 
@@ -264,7 +264,7 @@ public class AudioRecorderSample
             try {
                 while ((!mIsLoopExit) && (!Thread.interrupted())) {
                     byte[] buff = audioBufferQueue.take();
-                    NativeEngine.inputAudioFrame(buff, buff.length, System.currentTimeMillis());
+                    api.inputAudioFrameEx(buff, buff.length, System.currentTimeMillis(), 2, true);
                 }
             }catch (Exception e) {
                 Log.e(TAG, "Recorder Copy thread exit!");
@@ -387,7 +387,7 @@ public class AudioRecorderSample
 //                Log.d("OnAudioRecorderRefresh",""+audioBufferQueue.remainingCapacity());
                 audioBufferQueue.put(copyBuff);
             }else {
-                NativeEngine.inputAudioFrame(audBuf, audBuf.length, System.currentTimeMillis());
+                api.inputAudioFrameEx(audBuf, audBuf.length, System.currentTimeMillis(), 2, true);
             }
         } catch (Exception e) {
             e.printStackTrace();

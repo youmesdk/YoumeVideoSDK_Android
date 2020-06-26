@@ -159,7 +159,7 @@
                 android:id="@+id/seekBar_Beautify"
                 android:layout_width="wrap_content"
                 android:layout_height="fill_parent"
-                android:layout_weight="2.74"
+                android:layout_weight="2.29"
                 android:max="100"
                 android:progress="50" />
 
@@ -167,10 +167,17 @@
                 android:id="@+id/btn_tcpMode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="0.45"
+                android:layout_weight="0.40"
                 android:textAllCaps="false"
                 android:text="Udp Mode" />
 
+            <Button
+                android:id="@+id/btn_playBGM"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.40"
+                android:textAllCaps="false"
+                android:text="play BGM" />
 
         </LinearLayout>
 

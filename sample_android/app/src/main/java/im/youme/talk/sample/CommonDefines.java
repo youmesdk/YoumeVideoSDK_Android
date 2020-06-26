@@ -6,10 +6,10 @@ import com.youme.voiceengine.YouMeConst;
  * Created by peter on 12/10/16.
  */
 public class CommonDefines {
-    public static final String appJoinKey = "YOUME5BE427937AF216E88E0F84C0EF148BD29B691556";
+    public static final String appJoinKey = "YOUMEB16C6C9183F888FC210FBAB338DA6F04A19B93E5";
 
-    public static final String appKey = "YOUMEBC2B3171A7A165DC10918A7B50A4B939F2A187D0";
-    public static final String appSecret = "r1+ih9rvMEDD3jUoU+nj8C7VljQr7Tuk4TtcByIdyAqjdl5lhlESU0D+SoRZ30sopoaOBg9EsiIMdc8R16WpJPNwLYx2WDT5hI/HsLl1NJjQfa9ZPuz7c/xVb8GHJlMf/wtmuog3bHCpuninqsm3DRWiZZugBTEj2ryrhK7oZncBAAE=";
+    public static final String appKey = "YOUMEB16C6C9183F888FC210FBAB338DA6F04A19B93E5";
+    public static final String appSecret = "pHLyyX+I4UOTGF478IjJEdRtqh5K7MoRQZu6/4x6frAzuZA9ozWmuHX6C9bodBh/5NDOL1wWbQ7HUeLIbyBFt6Fs+zKj4YGbKGqE8fSHell5XsnebTRDyYZTFDIa1yxobNUdY7jVYH1masslVVvUY7WEFMtnOHnfzwSrbm8k+EEBAAE=";
 
     public static final String LOG_TAG = "YOUME";
 

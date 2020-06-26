@@ -1,9 +1,11 @@
 package im.youme.talk.sample;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
@@ -12,6 +14,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.IdRes;
 import android.support.annotation.RequiresApi;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -22,17 +26,19 @@ import android.widget.Toast;
 import android.content.Context;
 import android.widget.SeekBar;
 
-
 import com.youme.voiceengine.MemberChange;
+import com.youme.voiceengine.NativeEngine;
 import com.youme.voiceengine.VideoRenderer;
 import com.youme.voiceengine.YouMeCallBackInterface;
 import com.youme.voiceengine.YouMeCallBackInterfacePcm;
 import com.youme.voiceengine.YouMeConst;
+import com.youme.voiceengine.YouMeCustomDataCallbackInterface;
 import com.youme.voiceengine.api;
 import com.youme.voiceengine.mgr.YouMeManager;
 import com.youme.voiceengine.video.EglBase;
 import com.youme.voiceengine.video.RendererCommon;
 import com.youme.voiceengine.video.SurfaceViewRenderer;
+
 import android.widget.EditText;
 
 import java.io.File;
@@ -45,11 +51,11 @@ import java.util.Map;
 
 import im.youme.talk.streaming.core.VideoProducer;
 import im.youme.talk.video.PercentFrameLayout;
+
 import com.tencent.bugly.crashreport.CrashReport;
 
 
-
-public class VideoCapturerActivity extends Activity implements YouMeCallBackInterface, View.OnClickListener ,  SeekBar.OnSeekBarChangeListener  {
+public class VideoCapturerActivity extends Activity implements YouMeCallBackInterface, View.OnClickListener, SeekBar.OnSeekBarChangeListener, YouMeCustomDataCallbackInterface {
 
 
     public class RenderInfo
@@ -60,7 +66,7 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
 
     //是否使用外置采集，如果是，需要外部采集传给SDK，如果不是，则SDK内部负责采集
     public static boolean isExternalInputMode = false;
-
+    public static boolean isExternalEncode = false;
     //bugly
     private static final String YOUME_BUGLY_APP_ID = "428d8b14e2";
 
@@ -76,8 +82,9 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
     public static boolean _bBeautify = false;
     public static boolean _bUseTcpMode = false;
     public static boolean _bFixQuality = false;
+    public static boolean _bPlayBGM = false;
 
-    public static int _fps = 20;
+    public static int _fps = 30;
 
     public boolean inited = false;
 
@@ -94,6 +101,8 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
     private Button btn_camera_onoff = null;
     private Button btn_camera_switch = null;
     private Button btn_tcp_mode = null;
+    private Button btn_play_bgm = null;
+
     private Button btn_open_mic = null;
     private SeekBar seekbar_beautify = null;
 
@@ -125,13 +134,15 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
 
 
     //avstatistic回调数据的tips
-    private String  strAvTip = null ;
+    private String strAvTip = null;
     //为了展示avStatistic数据用的
-    private long  avTime = 0;
+    private long avTime = 0;
     //远端音量展示用的
     public String farendLevel = "0";
     private String currentRoomID = "";
     private MyHandler sampleEventHandler;
+
+    private MemberChange[] memberChange = null;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -199,6 +210,9 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         btn_tcp_mode = (Button) findViewById( R.id.btn_tcpMode );
         btn_tcp_mode.setOnClickListener( this );
 
+        btn_play_bgm = (Button) findViewById( R.id.btn_playBGM );
+        btn_play_bgm.setOnClickListener( this );
+
         btn_open_mic = (Button) findViewById( R.id.btn_open_mic );
         btn_open_mic.setOnClickListener( this );
 
@@ -211,6 +225,20 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         seekbar_beautify = (SeekBar) findViewById(R.id.seekBar_Beautify );
         seekbar_beautify.setOnSeekBarChangeListener(this);
 
+		//开启摄像头权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            Log.i("TEST", "Granted");
+            //init(barcodeScannerView, getIntent(), null);
+        } else {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.CAMERA}, 1);//1 can be another integer
+        }
+
+		//开启文件存储权限
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        }
 
         InitUI();
         //弹出对话框，要求选择外部采集还是内部采集
@@ -224,6 +252,7 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         btn_camera_switch.setEnabled(false);
         btn_open_mic.setEnabled(false);
         btn_tcp_mode.setEnabled(false);
+        btn_play_bgm.setEnabled(false);
     }
 
     private void InitedUI(){
@@ -232,6 +261,7 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         btn_camera_switch.setEnabled(false);
         btn_open_mic.setEnabled(false);
         btn_tcp_mode.setEnabled(true);
+        btn_play_bgm.setEnabled(false);
     }
 
     private void joingUI(){
@@ -239,6 +269,7 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         btn_camera_onoff.setEnabled(false);
         btn_camera_switch.setEnabled(false);
         btn_open_mic.setEnabled(false);
+        btn_play_bgm.setEnabled(false);
     }
 
     private void joindedUI(){
@@ -247,6 +278,7 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         btn_camera_switch.setEnabled(true);
         btn_open_mic.setEnabled(true);
         btn_tcp_mode.setEnabled(false);
+        btn_play_bgm.setEnabled(true);
     }
 
     private void leavedUI(){
@@ -255,19 +287,21 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         btn_camera_switch.setEnabled(false);
         btn_open_mic.setEnabled(false);
         btn_tcp_mode.setEnabled(true);
+        btn_play_bgm.setEnabled(false);
     }
 
-    private void askExternalMode(){
-        AlertDialog.Builder  builder = new AlertDialog.Builder( VideoCapturerActivity.this );
-        builder.setTitle( "选择采集模式");
-        builder.setPositiveButton("外部采集", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                isExternalInputMode = true ;
-                tvMode.setText("外部采集");
-                initSDK();
-            }
-        });
+    private void askExternalMode() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(VideoCapturerActivity.this);
+        builder.setTitle("选择采集模式");
+//        builder.setPositiveButton("外部采集", new DialogInterface.OnClickListener() {
+//            @Override
+//            public void onClick(DialogInterface dialog, int which) {
+//                isExternalInputMode = true ;
+//                isExternalEncode = false;
+//                tvMode.setText("外部采集");
+//                initSDK();
+//            }
+//        });
 
         builder.setNegativeButton( "内部采集", new DialogInterface.OnClickListener(){
             @Override
@@ -278,7 +312,16 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
             }
         });
 
-        builder.setCancelable( false );
+        builder.setPositiveButton("外部编码", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                isExternalInputMode = true;
+                isExternalEncode = true;
+                tvMode.setText("外部编码");
+                initSDK();
+            }
+        });
+        builder.setCancelable(false);
 
         builder.show();
     }
@@ -306,8 +349,12 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         //api.setUserLogPath("/sdcard/YouMe/ym_userlog.txt");
         //设置回调监听对象,需要implements YouMeCallBackInterface
         api.SetCallback(this);
+        api.setRecvCustomDataCallback(this);
+
         //设置测试服还是正式服
-//        NativeEngine.setServerMode(NativeEngine.SERVER_MODE_TEST);
+        NativeEngine.setServerMode(NativeEngine.SERVER_MODE_FIXED_IP_MCU);
+        NativeEngine.setServerIpPort("39.106.60.66", 6006);
+
         //调用初始化
         api.init(CommonDefines.appKey, CommonDefines.appSecret, YouMeConst.YOUME_RTC_SERVER_REGION.RTC_CN_SERVER, "");
     }
@@ -551,10 +598,32 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
 
     }
 
-	@Override
-    public  void onMemberChange(String channelID, MemberChange[] arrChanges, boolean isUpdate  ) {
-        Log.i(TAG, "onMemberChange:"+channelID + ",isUpdate:" + isUpdate );
+    @Override
+    public void onMemberChange(String channelID, MemberChange[] arrChanges, boolean isUpdate) {
+        Log.i(TAG, "onMemberChange:" + channelID + ",isUpdate:" + isUpdate);
+        memberChange = arrChanges;
+        int i;
+        for(i=0; i<memberChange.length; i++) {
+            if (memberChange[i].userID == local_user_id)
+            {
+                continue;
+            }
 
+            int validIndex = -1;
+            if( !renderInfoMap.containsKey( memberChange[i].userID ) ) {
+                //找一个空闲的viewIndex
+                for (int j = 0; j < 3; j++) {
+                    if (m_UserViewIndexEn[j] == 0) {
+                        validIndex = j;
+                        break;
+                    }
+                }
+
+                if (validIndex != -1) {//demo只支持接收3路远端数据，这个判断避免崩溃
+                    updateNewView(memberChange[i].userID, validIndex);
+                }
+            }
+        }
     }
 
 	@Override
@@ -621,18 +690,94 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         //开启扬声器
         api.setSpeakerMute(false);
 
-        isJoinedRoom = true;
-        //远端视频渲染的view
-        initRender( 0, R.id.capturer_video_layout, R.id.capturer_video_view);
-        initRender( 1, R.id.remote_video_layout_one, R.id.remote_video_view_one);
-        initRender( 2, R.id.remote_video_layout_two, R.id.remote_video_view_two);
-        //合流视频渲染的view
-        initRender( 3, R.id.remote_video_layout_three, R.id.remote_video_view_three);
-        VideoRenderer.getInstance().setLocalUserId(local_user_id);
-        updateNewView(local_user_id, 3 );
-        //下面这句自动测试才用
-        //btn_camera_onoff.performClick();
-      }
+            isJoinedRoom = true;
+            //远端视频渲染的view
+            initRender(0, R.id.capturer_video_layout, R.id.capturer_video_view);
+            initRender(1, R.id.remote_video_layout_one, R.id.remote_video_view_one);
+            initRender(2, R.id.remote_video_layout_two, R.id.remote_video_view_two);
+            //合流视频渲染的view
+            initRender(3, R.id.remote_video_layout_three, R.id.remote_video_view_three);
+            VideoRenderer.getInstance().setLocalUserId(local_user_id);
+            updateNewView(local_user_id, 3);
+            //下面这句自动测试才用
+            //btn_camera_onoff.performClick();
+
+            // 测试华为传输承载点对点传输信令和自定义消息
+            boolean send_side = true;
+            if (send_side) {
+                final byte sendMediaBuffer[] = "custom data 0x112233...".getBytes();
+                final String sendSignalBuffer = "signal data hello world";
+                Thread thread = new Thread() {
+                    @Override
+                    public void run() {
+                        while (true) {
+                            api.getChannelUserList(currentRoomID, -1, false);
+                            if (memberChange == null) {
+                                try {
+                                    Log.d(TAG, "bruce >>> have not received member change message");
+                                    sleep(50);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                continue;
+                            }
+
+                            int i;
+                            for (i = 0; i < memberChange.length; i++) {
+                                if (!local_user_id.equals(memberChange[i].userID)) {
+                                    Log.d(TAG, "bruce >>> send signal message and custom message to:" + memberChange[i].userID);
+                                    api.sendMessageToUser(currentRoomID, sendSignalBuffer, memberChange[i].userID);
+                                    api.inputCustomDataToUser(sendMediaBuffer, sendMediaBuffer.length, System.currentTimeMillis(), memberChange[i].userID);
+                                    break;
+                                }
+                            }
+
+                            try {
+                                sleep(5000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                };
+                thread.start();
+            } else {
+                final byte sendMediaBuffer[] = "only sending custom message...".getBytes();
+                Thread thread = new Thread() {
+                    @Override
+                    public void run() {
+                        while (true) {
+                            api.getChannelUserList(currentRoomID, -1, false);
+                            if (memberChange == null) {
+                                try {
+                                    Log.d(TAG, "bruce >>> have not received member change message");
+                                    sleep(50);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                continue;
+                            }
+
+                            int i;
+                            for (i = 0; i < memberChange.length; i++) {
+                                if (!local_user_id.equals(memberChange[i].userID)) {
+                                    Log.d(TAG, "bruce >>> send custom message to:" + memberChange[i].userID);
+                                    api.inputCustomDataToUser(sendMediaBuffer, sendMediaBuffer.length, System.currentTimeMillis(), memberChange[i].userID);
+                                    break;
+                                }
+                            }
+
+                            try {
+                                sleep(5000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                };
+                thread.start();
+            }
+        }
     }
 
     private void onLeavedlAll(){
@@ -693,8 +838,12 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         }
     }
 
-  private static class MyHandler extends Handler {
-    private final WeakReference<VideoCapturerActivity> mActivity;
+    public String getLocalUserID() {
+        return local_user_id;
+    }
+
+    private class MyHandler extends Handler {
+        private final WeakReference<VideoCapturerActivity> mActivity;
 
     private MyHandler(VideoCapturerActivity activity) {
       mActivity = new WeakReference<VideoCapturerActivity>(activity);
@@ -769,46 +918,54 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
               activity.strAvTip = "";
             }
 
-            activity.avTime = curtime;
-            activity.strAvTip = activity.strAvTip + msg.arg1 + "," + userId + "," + msg.arg2 + "\n";
-            activity.avTips.setText(activity.strAvTip );
-            break;
-          case YouMeConst.YouMeEvent.YOUME_EVENT_FAREND_VOICE_LEVEL:
-            ///这里应该区分userId
-            int level = msg.arg1;
-            String tempLevel;
-            userId = String.valueOf(msg.obj);
-            if (level < 1) {
-              tempLevel = "0";
-            } else if (level < 2) {
-              tempLevel = "00";
-            } else if (level < 3) {
-              tempLevel = "000";
-            } else if (level < 4) {
-              tempLevel = "0000";
-            } else if (level < 5) {
-              tempLevel = "00000";
-            } else if (level < 6) {
-              tempLevel = "000000";
-            } else if (level < 7) {
-              tempLevel = "0000000";
-            } else if (level < 8) {
-              tempLevel = "00000000";
-            } else if (level < 9) {
-              tempLevel = "000000000";
-            } else if (level < 10) {
-              tempLevel = "0000000000";
-            } else {
-              tempLevel = "00000000000";
+                        activity.avTime = curtime;
+                        activity.strAvTip = activity.strAvTip + msg.arg1 + "," + userId + "," + msg.arg2 + "\n";
+                        activity.avTips.setText(activity.strAvTip);
+                        break;
+                    case YouMeConst.YouMeEvent.YOUME_EVENT_FAREND_VOICE_LEVEL:
+                        ///这里应该区分userId
+                        int level = msg.arg1;
+                        String tempLevel;
+                        userId = String.valueOf(msg.obj);
+                        if (level < 1) {
+                            tempLevel = "0";
+                        } else if (level < 2) {
+                            tempLevel = "00";
+                        } else if (level < 3) {
+                            tempLevel = "000";
+                        } else if (level < 4) {
+                            tempLevel = "0000";
+                        } else if (level < 5) {
+                            tempLevel = "00000";
+                        } else if (level < 6) {
+                            tempLevel = "000000";
+                        } else if (level < 7) {
+                            tempLevel = "0000000";
+                        } else if (level < 8) {
+                            tempLevel = "00000000";
+                        } else if (level < 9) {
+                            tempLevel = "000000000";
+                        } else if (level < 10) {
+                            tempLevel = "0000000000";
+                        } else {
+                            tempLevel = "00000000000";
+                        }
+                        activity.farendLevel = tempLevel;
+                        activity.tvState.setText(("the sdkInfo:" + api.getSdkInfo() + "\n远端音量(" + userId + "): " + tempLevel));
+                        break;
+                    case YouMeConst.YouMeEvent.YOUME_EVENT_SEND_MESSAGE_RESULT:
+                        Log.d(TAG, "bruce >>> send signal message successful");
+                        break;
+                    case YouMeConst.YouMeEvent.YOUME_EVENT_MESSAGE_NOTIFY:
+                        Log.d(TAG, "bruce >>> received signal message:\"" + msg.obj + "\"");
+                        break;
+                    default:
+                        Log.w(TAG, "handleMessage: unkonw message type");
+                        break;
+                }
             }
-            activity.farendLevel = tempLevel;
-            activity.tvState.setText(("the sdkInfo:" + api.getSdkInfo() + "\n远端音量(" + userId + "): " + tempLevel));
-
-            break;
         }
-      }
     }
-  }
 
     /// btn 响应
     @Override
@@ -844,6 +1001,18 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
                     btn_tcp_mode.setText("Udp Mode");
                 }
 
+            }
+            break;
+            case R.id.btn_playBGM:
+            {
+                _bPlayBGM = !_bPlayBGM;
+                if ( _bPlayBGM ) {
+                    api.playBackgroundMusic("/sdcard/backmusic/test.mp3", true);
+                    btn_play_bgm.setText("stop BGM");
+                } else {
+                    api.stopBackgroundMusic();
+                    btn_play_bgm.setText("play BGM");
+                }
             }
             break;
         }
@@ -1000,24 +1169,40 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
             else{
                 seekbar_beautify.setEnabled( false );
             }
+
+            int sampleRate = 44100;
+            int channels = 1;
+            api.setPcmCallbackEnable(mOnYouMePcm, YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Remote |
+                    YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Record |
+                    YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Mix, true, sampleRate, channels);
+
             //joingUI();
             // 禁用内部输入
             api.setMicrophoneMute( true );
             //进入频道
             local_user_id =  mUserIDEditText.getText().toString();
             currentRoomID = mRoomIDEditText.getText().toString();
-            int ret = api.joinChannelSingleModeWithAppKey( local_user_id,currentRoomID, YouMeConst.YouMeUserRole.YOUME_USER_HOST, CommonDefines.appJoinKey ,true);
-            if(ret != 0){
-                String tip = "进频道失败,错误码:"+ ret;
+
+            // 加入房间之前开始鉴权，客户端向sdk传入token和timestamp
+            long startTime = System.currentTimeMillis() / 1000;
+            String targetString = String.format(CommonDefines.appKey + CommonDefines.appKey + currentRoomID + local_user_id + Long.toString(startTime));
+            String testLowerCaseToken = ShaOneEncrypt.encryptToSHA(targetString);
+//            Log.d(TAG, "initSDK: bruce >>> targetString:" + targetString);
+//            Log.d(TAG, "initSDK: bruce >>> testLowerCaseToken:" + testLowerCaseToken);
+            api.setTokenV3(testLowerCaseToken, startTime);
+
+            int ret = api.joinChannelSingleModeWithAppKey(local_user_id, currentRoomID, YouMeConst.YouMeUserRole.YOUME_USER_HOST, CommonDefines.appJoinKey, true);
+            if (ret != 0) {
+                String tip = "进频道失败,错误码:" + ret;
                 tvState.setText(tip);
                return;
             }
             joingUI();
-            api.setAutoSendStatus( true );
+            api.setAutoSendStatus(true);
 
-            api.setPcmCallbackEnable(mOnYouMePcm, YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Remote |
-                    YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Record |
-                    YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Mix, true );
+//            api.setPcmCallbackEnable(mOnYouMePcm, YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Remote |
+//                    YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Record |
+//                    YouMeConst.YouMePcmCallBackFlag.PcmCallbackFlag_Mix, true );
 
             btn_join.setText("离开频道");
             video_id = 0;
@@ -1037,12 +1222,10 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         public FileOutputStream createFileWriter( String fileName )
         {
 //            String filename = getApplicationContext().getExternalCacheDir().getAbsolutePath()  + File.separator + fileName;
-            String filename = "/sdcard"  + File.separator + fileName;
-            try
-            {
-                File file= new File( filename );
-                if( !file.exists() )
-                {
+            String filename = "/sdcard/Download" + File.separator + fileName;
+            try {
+                File file = new File(filename);
+                if (!file.exists()) {
                     boolean res = file.createNewFile();
                 }
                 FileOutputStream outFile  = new FileOutputStream( filename );
@@ -1127,7 +1310,11 @@ public class VideoCapturerActivity extends Activity implements YouMeCallBackInte
         }
     };
 
-
+    @Override
+    public void onRecvCustomData(byte[] data, long timestamp) {
+        String mediaData = new String(data);
+        Log.d(TAG, "bruce >>> received custom message:\"" + mediaData + "\"");
+    }
 
     /*
 
