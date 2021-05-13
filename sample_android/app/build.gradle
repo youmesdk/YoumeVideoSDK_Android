@@ -7,12 +7,11 @@ bugly {
 }
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion '25.0.2'
+    compileSdkVersion 29
     defaultConfig {
-        applicationId "im.youme.talk.sample"
-        minSdkVersion 11
-        targetSdkVersion 22
+        applicationId "im.youme.video.sample2"
+        minSdkVersion 17
+        targetSdkVersion 29
         versionCode 1
         versionName "1.0"
         ndk {
@@ -39,7 +38,8 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile fileTree(include: ['*.jar'], dir: 'bugly_so')
     testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:24.1.1'
+    compile 'com.android.support:appcompat-v7:26.1.0'
+    compile 'com.android.support:design:26.1.0'
     compile 'com.tencent.bugly:nativecrashreport:latest.release'
     compile files('libs/youme_voice_engine.jar')
 }

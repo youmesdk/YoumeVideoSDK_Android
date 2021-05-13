@@ -4,7 +4,13 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:weightSum="1">
-
+    <ScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
     <TextView
         android:id="@+id/textView"
         android:layout_width="match_parent"
@@ -15,6 +21,7 @@
         android:textStyle="bold" />
 
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:visibility="gone"
         android:orientation="horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content">
@@ -23,60 +30,209 @@
             android:id="@+id/textView2"
             android:layout_width="162dp"
             android:layout_height="28dp"
-            android:text="视频宽："
+            android:text="serverIP："
             android:textAlignment="center"
             android:textSize="18sp" />
 
         <EditText
-            android:id="@+id/editText_videoWidth"
+            android:id="@+id/editText_serverip"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:text="240"
-            android:inputType="number"/>
+            android:text="0.0.0.0"
+            android:inputType="text"/>
 
     </LinearLayout>
+
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:visibility="gone"
         android:orientation="horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content">
 
         <TextView
-            android:id="@+id/textView3"
+            android:id="@+id/textView23"
             android:layout_width="162dp"
             android:layout_height="28dp"
-            android:text="视频高："
+            android:text="serverPort："
             android:textAlignment="center"
             android:textSize="18sp" />
 
         <EditText
-            android:id="@+id/editText_videoHeight"
+            android:id="@+id/editText_serverport"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:text="320"
+            android:text="0"
             android:inputType="number"/>
+
     </LinearLayout>
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" >
+
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:orientation="horizontal"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/textView22"
+                android:layout_width="100dp"
+                android:layout_height="28dp"
+                android:text="视频宽："
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <EditText
+                android:id="@+id/editText_videoWidth"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:text="240"
+                android:inputType="number"/>
+
+        </LinearLayout>
+
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:orientation="horizontal"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/textView3"
+                android:layout_width="100dp"
+                android:layout_height="28dp"
+                android:text="视频高："
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <EditText
+                android:id="@+id/editText_videoHeight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:text="320"
+                android:inputType="number"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" >
+
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:orientation="horizontal"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/shareWidth"
+                android:layout_width="100dp"
+                android:layout_height="28dp"
+                android:text="录屏宽："
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <EditText
+                android:id="@+id/editText_shareWidth"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:text="1080"
+                android:inputType="number"/>
+
+        </LinearLayout>
+
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:orientation="horizontal"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/shareHeight"
+                android:layout_width="100dp"
+                android:layout_height="28dp"
+                android:text="录屏高："
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <EditText
+                android:id="@+id/editText_shareHeight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:text="1920"
+                android:inputType="number"/>
+
+        </LinearLayout>
+    </LinearLayout>
+
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:orientation="horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content">
 
-        <TextView
-            android:id="@+id/textViewFps"
-            android:layout_width="162dp"
-            android:layout_height="28dp"
-            android:text="视频帧率："
-            android:textAlignment="center"
-            android:textSize="18sp" />
-
-        <EditText
-            android:id="@+id/editText_videoFps"
-            android:layout_width="match_parent"
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:orientation="horizontal"
+            android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
-            android:text="15"
-            android:inputType="number"/>
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/textViewFps"
+                android:layout_width="100dp"
+                android:layout_height="28dp"
+                android:text="视频帧率："
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <EditText
+                android:id="@+id/editText_videoFps"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:text="15"
+                android:inputType="number"/>
+
+        </LinearLayout>
+
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:orientation="horizontal"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/textView6"
+                android:layout_width="140dp"
+                android:layout_height="28dp"
+                android:text="远端音量等级："
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <EditText
+                android:id="@+id/editText_farendLevel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:text="10"
+                android:inputType="number"/>
+
+        </LinearLayout>
+
+
     </LinearLayout>
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:orientation="horizontal"
@@ -136,79 +292,251 @@
             android:text="5000"
             android:inputType="number"/>
     </LinearLayout>
-    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+    <LinearLayout
+        android:visibility="visible"
         android:orientation="horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content">
 
         <TextView
-            android:id="@+id/textView6"
-            android:layout_width="162dp"
-            android:layout_height="28dp"
-            android:text="远端音量等级："
+            android:id="@+id/textViewLocalIP"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:text="本端iP："
             android:textAlignment="center"
             android:textSize="18sp" />
 
         <EditText
-            android:id="@+id/editText_farendLevel"
+            android:id="@+id/editTextLocalIP"
+            android:layout_width="163dp"
+            android:layout_height="match_parent"
+            android:ems="10"
+            android:text="192.168.0.1" />
+
+        <TextView
+            android:id="@+id/textViewLocalPort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="port:"
+            android:textAlignment="center"
+            android:textSize="18sp" />
+
+        <EditText
+            android:id="@+id/editTextLocalPort"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:text="10"
+            android:text="50000"
             android:inputType="number"/>
     </LinearLayout>
 
-    <Switch
-        android:id="@+id/switch_audioQuality"
-        android:layout_width="274dp"
-        android:layout_height="28dp"
+    <LinearLayout
+        android:visibility="visible"
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
 
-        android:layout_weight="0.14"
-        android:checked="true"
-        android:text="高音质"
-        android:visibility="gone"
-        android:textAlignment="center"
-        android:textSize="18sp" />
+        <TextView
+            android:id="@+id/textViewRemoteIP"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:text="远端iP："
+            android:textAlignment="center"
+            android:textSize="18sp" />
 
-    <Switch
-        android:id="@+id/switch_beautify"
-        android:layout_width="277dp"
-        android:layout_height="28dp"
+        <EditText
+            android:id="@+id/editTextRemoteIP"
+            android:layout_width="163dp"
+            android:layout_height="match_parent"
+            android:ems="10"
+            android:text="192.168.0.1" />
 
-        android:layout_weight="0.09"
-        android:checked="true"
-        android:text="美颜"
-        android:textAlignment="center"
-        android:textSize="18sp" />
+        <TextView
+            android:id="@+id/textViewRemotePort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="port:"
+            android:textAlignment="center"
+            android:textSize="18sp" />
 
-    <Switch
-        android:id="@+id/switch_bHWEnable"
-        android:layout_width="274dp"
-        android:layout_height="28dp"
-        android:checked="true"
-        android:text="硬编码"
-        android:textAlignment="center"
-        android:textSize="18sp"
-        android:visibility="gone"
-        android:layout_weight="0.14" />
+        <EditText
+            android:id="@+id/editTextRemotePort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:text="50000"
+            android:inputType="number"/>
+    </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="38dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/sdkIPLabel"
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:text="sdk ip："
+                    android:textAlignment="center"
+                    android:textSize="18sp" />
+
+                <EditText
+                    android:id="@+id/sdkIP"
+                    android:layout_width="223dp"
+                    android:layout_height="42dp"
+                    android:ems="10"
+                    android:text="" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/rdtIPLabel"
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:text="rdt ip："
+                    android:textAlignment="center"
+                    android:textSize="18sp" />
+
+                <EditText
+                    android:id="@+id/redirectIP"
+                    android:layout_width="223dp"
+                    android:layout_height="42dp"
+                    android:ems="10"
+                    android:text="" />
+
+            </LinearLayout>
+            <Switch
+                android:id="@+id/switch_min_delay"
+                android:layout_width="274dp"
+                android:layout_height="23dp"
+                android:layout_weight="0.14"
+                android:checked="true"
+                android:text="低延迟"
+                android:textAlignment="center"
+                android:textSize="18sp" />
 
     <Switch
         android:id="@+id/switch_videoQuality"
         android:layout_width="274dp"
-        android:layout_height="28dp"
-
+        android:layout_height="23dp"
         android:layout_weight="0.14"
         android:checked="true"
-        android:text="动态码率编码"
+        android:text="强制高音质"
         android:textAlignment="center"
         android:textSize="18sp" />
 
-    <Button
-        android:id="@+id/button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:onClick="onConfirmClick"
-        android:text="确定" />
+    <!--<Switch-->
+        <!--android:id="@+id/switch_beautify"-->
+        <!--android:layout_width="277dp"-->
+        <!--android:layout_height="28dp"-->
+        <!--android:layout_weight="0.09"-->
+        <!--android:checked="false"-->
+        <!--android:text="美颜"-->
+        <!--android:textAlignment="center"-->
+        <!--android:textSize="18sp" />-->
 
-</LinearLayout>
+    <Switch
+        android:id="@+id/switch_bHWEnable"
+        android:layout_width="274dp"
+        android:layout_height="23dp"
+        android:checked="true"
+        android:text="优先硬编码"
+        android:textAlignment="center"
+        android:textSize="18sp"
+        android:layout_weight="0.14" />
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/videocodecLabel"
+                android:layout_width="220dp"
+                android:layout_height="wrap_content"
+                android:text="编码格式"
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+        <Spinner
+                android:id="@+id/videocodec_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:entries="@array/videocodecclass"
+            />
+
+        </LinearLayout>
+
+            <Switch
+        android:id="@+id/switch_tcp"
+        android:layout_width="277dp"
+        android:layout_height="23dp"
+        android:layout_weight="0.09"
+        android:checked="false"
+        android:text="强制TCP"
+        android:textAlignment="center"
+        android:textSize="18sp" />
+
+    <Switch
+        android:id="@+id/switch_landscape"
+        android:layout_width="277dp"
+        android:layout_height="23dp"
+        android:layout_weight="0.09"
+        android:checked="false"
+        android:text="横屏"
+        android:textAlignment="center"
+        android:textSize="18sp" />
+    <Switch
+        android:id="@+id/switch_vbr"
+        android:layout_width="277dp"
+        android:layout_height="23dp"
+        android:layout_weight="0.09"
+        android:checked="false"
+        android:text="VBR"
+        android:textAlignment="center"
+        android:textSize="18sp" />
+    <Switch
+        android:id="@+id/switch_testmode"
+        android:layout_width="277dp"
+        android:layout_height="23dp"
+        android:layout_weight="0.09"
+        android:checked="false"
+        android:text="测试服"
+        android:textAlignment="center"
+        android:textSize="18sp" />
+            <Switch
+                android:id="@+id/switch_testP2P"
+                android:layout_width="277dp"
+                android:layout_height="23dp"
+                android:layout_weight="0.09"
+                android:checked="false"
+                android:text="P2P连接测试"
+                android:textAlignment="center"
+                android:textSize="18sp" />
+            <Switch
+                android:id="@+id/switch_test_seconde_stream"
+                android:layout_width="277dp"
+                android:layout_height="23dp"
+                android:layout_weight="0.09"
+                android:checked="false"
+                android:text="小流"
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="onConfirmClick"
+                android:text="确定" />
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>

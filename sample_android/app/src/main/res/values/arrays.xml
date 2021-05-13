@@ -56,4 +56,17 @@
         <item>Remove favorite</item>
     </string-array>
 
+
+
+    <string-array name="Area">
+        <item>全球通话</item>
+        <item>大陆</item>
+        <item>新加坡</item>
+        <item>香港</item>
+        <item>美国</item>
+        <item>欧洲</item>
+        <item>日本</item>
+        <item>韩国</item>
+    </string-array>
+
 </resources>
